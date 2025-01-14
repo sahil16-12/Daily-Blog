@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { Button, Input, RTE, Select } from "..";
@@ -40,6 +41,7 @@ export default function PostForm({ post }) {
     } else {
       const file = await appwriteService.uploadFile(data.image[0]);
 
+      console.log(userData.$id + " My ID");
       if (file) {
         const fileId = file.$id;
         data.featuredImage = fileId;
@@ -108,7 +110,7 @@ export default function PostForm({ post }) {
           label="Featured Image :"
           type="file"
           className="mb-4"
-          accept="image/png, image/jpg, image/jpeg, image/gif, image/webp"
+          accept="image/png, image/jpg, image/jpeg, image/gif"
           {...register("image", { required: !post })}
         />
         {post && (
@@ -121,8 +123,8 @@ export default function PostForm({ post }) {
           </div>
         )}
         <Select
-          label="Status :"
           options={["active", "inactive"]}
+          label="Status"
           className="mb-4"
           {...register("status", { required: true })}
         />
