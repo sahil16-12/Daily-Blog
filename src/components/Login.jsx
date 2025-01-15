@@ -10,20 +10,30 @@ import { useForm } from "react-hook-form";
 function Login() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { register, handleSubmit } = useForm();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm();
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const login = async (data) => {
+    setLoading(true);
     setError("");
     try {
       const session = await authService.login(data);
+      console.log("Session created:", session);
       if (session) {
         const userData = await authService.getCurrentUser();
-        if (userData) dispatch(authLogin(userData));
+        console.log("User data retrieved:", userData);
+        if (userData) dispatch(authLogin({ userData }));
         navigate("/");
       }
     } catch (error) {
-      setError(error.message);
+      setError(error.message || "An unexpected error occurred");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -57,24 +67,29 @@ function Login() {
               placeholder="Enter your email"
               type="email"
               {...register("email", {
-                required: true,
-                validate: {
-                  matchPatern: (value) =>
-                    /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(value) ||
-                    "Email address must be a valid address",
+                required: "Email is required",
+                pattern: {
+                  value: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+                  message: "Email address must be a valid address",
                 },
               })}
             />
+            {errors.email && (
+              <p className="text-red-600">{errors.email.message}</p>
+            )}
+
             <Input
               label="Password: "
               type="password"
               placeholder="Enter your password"
-              {...register("password", {
-                required: true,
-              })}
+              {...register("password", { required: "Password is required" })}
             />
-            <Button type="submit" className="w-full">
-              Sign in
+            {errors.password && (
+              <p className="text-red-600">{errors.password.message}</p>
+            )}
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Signing in..." : "Sign in"}
             </Button>
           </div>
         </form>

@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button, Input, RTE, Select } from "..";
 import appwriteService from "../../appwrite/config";
@@ -20,55 +19,20 @@ export default function PostForm({ post }) {
   const navigate = useNavigate();
   const userData = useSelector((state) => state.auth.userData);
 
-  const submit = async (data) => {
-    if (post) {
-      const file = data.image[0]
-        ? await appwriteService.uploadFile(data.image[0])
-        : null;
-
-      if (file) {
-        appwriteService.deleteFile(post.featuredImage);
-      }
-
-      const dbPost = await appwriteService.updatePost(post.$id, {
-        ...data,
-        featuredImage: file ? file.$id : undefined,
-      });
-
-      if (dbPost) {
-        navigate(`/post/${dbPost.$id}`);
-      }
-    } else {
-      const file = await appwriteService.uploadFile(data.image[0]);
-
-      console.log(userData.$id + " My ID");
-      if (file) {
-        const fileId = file.$id;
-        data.featuredImage = fileId;
-        const dbPost = await appwriteService.createPost({
-          ...data,
-          userId: userData.$id,
-        });
-
-        if (dbPost) {
-          navigate(`/post/${dbPost.$id}`);
-        }
-      }
-    }
-  };
-
+  // Memoized slug transformation function
   const slugTransform = useCallback((value) => {
-    if (value && typeof value === "string")
+    if (value && typeof value === "string") {
       return value
         .trim()
         .toLowerCase()
         .replace(/[^a-zA-Z\d\s]+/g, "-")
-        .replace(/\s/g, "-");
-
+        .replace(/\s+/g, "-");
+    }
     return "";
   }, []);
 
-  React.useEffect(() => {
+  // Watch for changes in the title field
+  useEffect(() => {
     const subscription = watch((value, { name }) => {
       if (name === "title") {
         setValue("slug", slugTransform(value.title), { shouldValidate: true });
@@ -77,6 +41,56 @@ export default function PostForm({ post }) {
 
     return () => subscription.unsubscribe();
   }, [watch, slugTransform, setValue]);
+
+  // Ensure userData is available
+  useEffect(() => {
+    if (!userData) {
+      console.warn("User data is not available yet.");
+    }
+  }, [userData]);
+
+  const submit = async (data) => {
+    try {
+      let file;
+      if (data.image?.[0]) {
+        file = await appwriteService.uploadFile(data.image[0]);
+      }
+
+      if (post) {
+        if (file && post.featuredImage) {
+          await appwriteService.deleteFile(post.featuredImage);
+        }
+
+        const dbPost = await appwriteService.updatePost(post.$id, {
+          ...data,
+          featuredImage: file ? file.$id : post.featuredImage,
+        });
+
+        if (dbPost) {
+          navigate(`/post/${dbPost.$id}`);
+        }
+      } else {
+        if (!file) throw new Error("Image file is required for a new post.");
+
+        const dbPost = await appwriteService.createPost({
+          ...data,
+          userId: userData.$id,
+          featuredImage: file.$id,
+        });
+
+        if (dbPost) {
+          navigate(`/post/${dbPost.$id}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error while submitting the form:", error.message);
+    }
+  };
+
+  // Guard for userData
+  if (!userData) {
+    return <div>Loading user data...</div>;
+  }
 
   return (
     <form onSubmit={handleSubmit(submit)} className="flex flex-wrap">
@@ -110,10 +124,10 @@ export default function PostForm({ post }) {
           label="Featured Image :"
           type="file"
           className="mb-4"
-          accept="image/png, image/jpg, image/jpeg, image/gif"
+          accept="image/png, image/jpg, image/jpeg, image/gif, image/webp"
           {...register("image", { required: !post })}
         />
-        {post && (
+        {post && post.featuredImage && (
           <div className="w-full mb-4">
             <img
               src={appwriteService.getFilePreview(post.featuredImage)}
