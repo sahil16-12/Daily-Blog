@@ -21,7 +21,7 @@ function AllPosts() {
             <div className="p-2 w-full">
               <Link to={`/add-post`}>
                 <h1 className="text-2xl font-bold hover:text-gray-500">
-                  You don't have any blogs.<br></br> Click here to add a blog
+                  There are no blogs.<br></br> Click here to create one
                 </h1>
               </Link>
             </div>
